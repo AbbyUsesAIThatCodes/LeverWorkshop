@@ -12,6 +12,16 @@ The previous release translated the connectors by a full pitch instead of half a
 
 The mounting constraints reserve the pivot's two columns. For load columns `a`, `b` and first pivot column `p`, legal arrangements satisfy `1 ≤ a < p`, `p + 1 < b ≤ 20`. There are 969 legal triples. Each load has five gear-count settings, 0–4.
 
+## Load-bracket attachment
+
+The corner connector's outer flange face is 0.490157 hole pitches outward from the load's mounting column. The upright is 0.480315 pitches thick, so its center sits 0.730315 pitches outward, with its inner face touching that flange. Both loads use mirrored copies of these measured CAD offsets.
+
+The two lower 1x1 pins are centered at the corner/upright interface. Their two ends fill the two joining parts, with only the CAD snap tips extending about 0.04 mm past the exposed faces. The three upper mounting pins use the separate upright/first-gear interface at 0.970472 pitches. The gear stack follows the upright outward; its recipes and spacing are unchanged.
+
+The earlier assembly overlapped the corner and upright by roughly 3 mm and incorrectly placed the lower pins at the upper joint's depth. The corrected shared transforms update both the rendered parts and their physical centers of mass.
+
+![Inside and outside views of both corrected load brackets](screenshots/load-bracket-fit.png)
+
 ## CAD mass properties
 
 `scripts/measure-cad.py` computes each closed OBJ mesh's signed tetrahedron volume, volume centroid, and inertia per unit mass. Coordinates are converted to hole pitches first; the shaft/collar source uses inches and the remaining meshes use millimeters. The generated `src/part-properties.json` is committed. Regeneration requires NumPy and the original named CAD files listed by `docs/cad-provenance.json`:
