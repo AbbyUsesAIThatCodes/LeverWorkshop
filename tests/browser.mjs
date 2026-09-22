@@ -289,7 +289,21 @@ try {
   await fits();
   await page.screenshot({ path: "artifacts/workshop-small-laptop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(200);
+  // Software-rendered CI can finish resizing after 200 ms. Wait for the
+  // projected labels to reach the new viewport before measuring their bounds.
+  await page.waitForFunction(
+    () =>
+      ["a", "pivot", "b"].every((part) => {
+        const tag = document.querySelector(`[data-part="${part}"]`);
+        const bounds = tag.getBoundingClientRect();
+        return (
+          !tag.hidden && bounds.width > 0 &&
+          bounds.left >= 0 && bounds.right <= innerWidth
+        );
+      }),
+    null,
+    { timeout: 10000 },
+  );
   await fits();
   for (const part of ["a", "pivot", "b"]) {
     const tag = await page.locator(`[data-part="${part}"]`).boundingBox();
