@@ -566,7 +566,7 @@ export class WorkshopScene {
     this.controls.target.set(0, 5, 0);
     this.controls.maxDistance = Math.max(65, 55 * fit);
     this.controls.update();
-    this.dirty = true;
+    this.draw();
   }
   sideCamera() {
     const fit = Math.max(
@@ -576,13 +576,13 @@ export class WorkshopScene {
     this.camera.position.set(0, 5.1, 34 * fit);
     this.controls.target.set(0, 4.8, 0);
     this.controls.update();
-    this.dirty = true;
+    this.draw();
   }
   turn() {
     const offset = this.camera.position.clone().sub(this.controls.target);
     offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
     this.camera.position.copy(this.controls.target).add(offset);
     this.controls.update();
-    this.dirty = true;
+    this.draw();
   }
 }

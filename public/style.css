@@ -92,6 +92,8 @@ input {
 #app {
   height: 100dvh;
   isolation: isolate;
+  /* Projected labels may leave the camera view while orbiting or resizing. */
+  overflow: hidden;
 }
 #scene canvas {
   display: block;

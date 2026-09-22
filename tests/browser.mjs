@@ -64,15 +64,19 @@ async function dragTag(part, pixels) {
   await page.mouse.up();
 }
 async function fits() {
-  assert.equal(
-    await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth > innerWidth ||
-        document.documentElement.scrollHeight > innerHeight,
-    ),
-    false,
-    "no viewport overflow",
-  );
+  const dimensions = await page.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+  if (
+    dimensions.scrollWidth > dimensions.width ||
+    dimensions.scrollHeight > dimensions.height
+  ) {
+    await page.screenshot({ path: "artifacts/viewport-overflow.png" });
+    assert.fail(`Viewport overflow: ${JSON.stringify(dimensions)}`);
+  }
   const b = await page.locator("#scene canvas").boundingBox();
   const size = page.viewportSize();
   assert.equal(b.width, size.width);
@@ -92,6 +96,13 @@ try {
   );
   assert.equal(await page.locator("#lesson").count(), 0);
   await page.screenshot({ path: "artifacts/workshop.png" });
+  // Zooming can project a floating label beyond the viewport; it must stay clipped.
+  await page.mouse.move(900, 400);
+  await page.mouse.wheel(0, -1200);
+  await page.waitForTimeout(200);
+  await fits();
+  await page.locator("#view-reset").click();
+
   await page.locator("#hold").click();
   await page.locator("#view-side").click();
   await page.waitForTimeout(150);
@@ -127,7 +138,11 @@ try {
   // Two quarter turns reverse screen sides. A remains A and drag direction reverses.
   await page.locator("#view-turn").click();
   await page.locator("#view-turn").click();
-  await page.waitForTimeout(150);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-part="a"]').getBoundingClientRect().x >
+      document.querySelector('[data-part="b"]').getBoundingClientRect().x,
+  );
   a = await tagCenter("a");
   let b = await tagCenter("b");
   assert.ok(a.x > b.x, "camera reaches the opposite side");
@@ -149,7 +164,11 @@ try {
   await page.screenshot({ path: "artifacts/opposite-view.png" });
   await page.locator("#view-turn").click();
   await page.locator("#view-turn").click();
-  await page.waitForTimeout(150);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-part="a"]').getBoundingClientRect().x <
+      document.querySelector('[data-part="b"]').getBoundingClientRect().x,
+  );
   a = await tagCenter("a");
   b = await tagCenter("b");
   assert.ok(a.x < b.x, "full horizontal orbit returns to original side");
@@ -323,6 +342,17 @@ try {
   console.log(
     "PASS: real-mesh and tag dragging; all crossing limits; reverse-view drag; 360° orbit; load sliders; keyboard controls; persistence; cancellation; model settings; small screens; touch; WebGL/storage fallback; local-only assets.",
   );
+} catch (error) {
+  await page.screenshot({ path: "artifacts/browser-failure.png" });
+  console.error(
+    "Failure state:",
+    await state(),
+    "A:",
+    await tagCenter("a"),
+    "B:",
+    await tagCenter("b"),
+  );
+  throw error;
 } finally {
   await browser.close();
   server?.kill();
