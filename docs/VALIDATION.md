@@ -2,12 +2,13 @@
 
 ## Mechanics and geometry
 
-`npm test`: 11 passing tests at the time of this update.
+`npm test`: 12 passing tests at the time of this update.
 
 - All 11 compressed CAD buffers contain finite vertices/normals and match declared bounds. The actual offset mesh contains the lower-hole ring centered halfway between its mounting pins.
 - All 969 legal mounting triples preserve the two reserved pivot columns under every tested move, including out-of-range and fractional input.
 - Both offset connectors' measured lower-hole centers share the shaft axis at every permitted pivot location and remain on that axis during rotation.
 - Gear counts, added pins, and complete-load masses agree for all five load settings.
+- Both load brackets have matching CAD mating faces and hole axes. Lower pins span the corner/upright joint; upper pins align with the separate gear interface. Checked from both sides, across alternate positions and all gear counts.
 - Equal end loads balance from level at the central mounting pair. More mass, a longer arm, and an off-center pivot change turning direction as expected.
 - Beam self-weight contributes to torque; component inertia is finite and positive.
 - Torque matches the negative numerical gradient of potential energy, including elevated centers of mass.
@@ -19,6 +20,8 @@
 The Chromium walkthrough in `tests/browser.mjs` checks actual CAD-mesh dragging, larger draggable labels, both load limits, pivot limits, reverse-view drag direction, all four camera quadrants, background orbit, gear sliders, keyboard control/focus, saved-state reload, canceled drags, editable mass settings, 1024×600 and portrait layouts, touch dragging, WebGL/storage fallback, and local-only runtime requests.
 
 The local run uses software-rendered WebGL on Linux. Screenshots are captured at 1366×768, 1024×600, and 390×844. This establishes behavior in the test environment, not performance on school hardware. GitHub Actions repeats model, build, and browser checks on the PR.
+
+`docs/screenshots/load-bracket-fit.png` shows inspected close-ups of both corrected brackets from inside and outside, rendered with the production scene and assembly.
 
 `docs/screenshots/` contains synthetic browser sessions. No student work or identities are used.
 

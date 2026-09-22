@@ -11,6 +11,7 @@ import {
   loadMass,
   createAssembly,
   point,
+  properties,
   componentProperties,
   physicalModel,
   turningMoment,
@@ -90,6 +91,77 @@ test("each load step adds the declared gear and its three pins with no double-co
       near(loadMass(n), expected[n]);
     }
   }
+});
+test("both load brackets seat face-to-face with their 1x1 pins centered in the joints", () => {
+  for (const layout of [
+    DEFAULT_STATE,
+    { ...DEFAULT_STATE, a: 3, pivot: 8, b: 17 },
+    { ...DEFAULT_STATE, a: 8, pivot: 9, b: 11 },
+  ])
+    for (let n = 0; n <= 4; n++) {
+      const assembly = createAssembly({ ...layout, loadA: n, loadB: n });
+      for (const owner of ["a", "b"]) {
+        const sign = owner === "a" ? -1 : 1;
+        const parts = assembly.filter((p) => p.owner === owner);
+        const corner = parts.find((p) => p.name === "corner");
+        const upright = parts.find((p) => p.name === "upright");
+        const pins = parts.filter((p) => p.name === "pin");
+        const half = properties.upright.bounds[1][2];
+        // Source CAD: corner holes at (0/1, Y, -.5); upright's bottom
+        // holes at (-1.5, +/-.5, Z). Check their actual mating surfaces.
+        const cornerHoles = [0, 1]
+          .map((x) => point(corner, [x, properties.corner.bounds[0][1], -0.5]))
+          .sort((a, b) => a[2] - b[2]);
+        for (const [i, z] of [-0.5, 0.5].entries()) {
+          const inner = point(upright, [-1.5, z, -sign * half]);
+          inner.forEach((v, axis) => near(v, cornerHoles[i][axis]));
+          assert.ok(
+            sign * (upright.position[0] - inner[0]) > 0,
+            "upright is outside the flange, without intersecting it",
+          );
+          const pin = pins.find(
+            (p) =>
+              Math.abs(p.position[1] - inner[1]) < 1e-6 &&
+              Math.abs(p.position[2] - inner[2]) < 1e-6,
+          );
+          assert.ok(pin, "one joining pin on each lower hole axis");
+          pin.position.forEach((v, axis) => near(v, inner[axis]));
+          const tips = properties.pin.bounds
+            .map((b) => point(pin, [0, 0, b[2]])[0])
+            .sort((a, b) => a - b);
+          // The flange's other face is local Y=-.00984252 in the source CAD.
+          const exposedFaces = [
+            point(corner, [0, -0.00984252, -0.5])[0],
+            point(upright, [-1.5, z, sign * half])[0],
+          ].sort((a, b) => a - b);
+          // Modeled snap-pin tips extend only about .04 mm past the faces.
+          tips.forEach((v, j) => near(v, exposedFaces[j], 0.004));
+        }
+        const gear = parts.find((p) => p.name === "largeGear");
+        for (const [height, z] of [
+          [1.5, -0.5],
+          [1.5, 0.5],
+          [1, 0],
+        ]) {
+          const joint = point(upright, [height, z, sign * half]);
+          const pin = pins.find((p) =>
+            p.position.every((v, axis) => Math.abs(v - joint[axis]) < 1e-6),
+          );
+          assert.ok(
+            pin,
+            "upper pins are centered on the separate upright/gear interface",
+          );
+          if (gear) {
+            const hole = point(gear, [
+              -z,
+              height - 2,
+              -sign * properties.largeGear.bounds[1][2],
+            ]);
+            hole.forEach((v, axis) => near(v, joint[axis]));
+          }
+        }
+      }
+    }
 });
 test("CAD-based mass properties are finite and equal end loads balance at the central mounting pair", () => {
   for (let n = 0; n <= 4; n++) {

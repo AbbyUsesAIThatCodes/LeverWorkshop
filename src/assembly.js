@@ -174,6 +174,14 @@ export function createAssembly(s, c = DEFAULT_CALIBRATION) {
   // Both actual CAD shaft holes are at x=.5, z=-2. The pins are at x=0 and x=1.
   add("offset", "pivot", [-0.5, 2, 0.5], BEAM_ROTATION);
   add("offset", "pivot", [0.5, 2, -0.5], FAR_CONNECTOR_ROTATION);
+  // Seat each upright against the corner's outer face. A 1x1 pin is
+  // double-ended: its middle belongs at the interface between the two parts.
+  const beamSurface = properties.beam.bounds[1][2];
+  const cornerFace = -properties.corner.bounds[0][1];
+  const uprightHalfThickness = properties.upright.bounds[1][2];
+  const uprightOffset = cornerFace + uprightHalfThickness;
+  const gearMountFace = uprightOffset + uprightHalfThickness;
+  const firstGearOffset = gearMountFace + properties.largeGear.bounds[1][2];
   for (const owner of ["a", "b"]) {
     const sign = owner === "a" ? -1 : 1,
       anchor = anchorX(s, owner) - px,
@@ -184,38 +192,59 @@ export function createAssembly(s, c = DEFAULT_CALIBRATION) {
       [0, 0, -1],
       [sign, 0, 0],
     ];
-    add("corner", owner, local(0, 0.24, -sign * 0.5), cornerRotation);
-    add("upright", owner, local(sign * 0.49, 2.24, 0), UPRIGHT_ROTATION);
-    // Two structural pins and three gear-mounting pins stay when all gear packs are removed.
+    add("corner", owner, local(0, beamSurface, -sign * 0.5), cornerRotation);
+    add(
+      "upright",
+      owner,
+      local(sign * uprightOffset, beamSurface + 2, 0),
+      UPRIGHT_ROTATION,
+    );
+    // The two lower pins bridge corner/upright; the three upper pins bridge
+    // upright/first gear. These joints are on opposite faces of the upright.
+    for (const z of [-0.5, 0.5])
+      add(
+        "pin",
+        owner,
+        local(sign * cornerFace, beamSurface + 0.5, z),
+        FACE_ROTATION,
+      );
     for (const [y, z] of [
-      [3.74, -0.5],
-      [3.74, 0.5],
-      [3.24, 0],
-      [0.74, -0.5],
-      [0.74, 0.5],
+      [3.5, -0.5],
+      [3.5, 0.5],
+      [3, 0],
     ])
-      add("pin", owner, local(sign * 0.72, y, z), FACE_ROTATION);
+      add(
+        "pin",
+        owner,
+        local(sign * gearMountFace, beamSurface + y, z),
+        FACE_ROTATION,
+      );
     for (let i = 0; i < n; i++) {
       const large = i % 2 === 0,
-        x = 0.98 + i * 0.51;
+        x = firstGearOffset + i * 0.51;
       add(
         large ? "largeGear" : "smallGear",
         owner,
-        local(sign * x, 4.24, 0),
+        local(sign * x, beamSurface + 4, 0),
         FACE_ROTATION,
       );
       for (const [y, z] of large
         ? [
-            [4.74, -0.5],
-            [4.74, 0.5],
-            [5.24, 0],
+            [4.5, -0.5],
+            [4.5, 0.5],
+            [5, 0],
           ]
         : [
-            [3.74, -0.5],
-            [3.74, 0.5],
-            [3.24, 0],
+            [3.5, -0.5],
+            [3.5, 0.5],
+            [3, 0],
           ])
-        add("pin", owner, local(sign * (x + 0.25), y, z), FACE_ROTATION);
+        add(
+          "pin",
+          owner,
+          local(sign * (x + 0.25), beamSurface + y, z),
+          FACE_ROTATION,
+        );
     }
   }
   return parts;
