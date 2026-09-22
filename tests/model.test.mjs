@@ -1,133 +1,244 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  outcome,
-  valid,
-  pool,
-  solutions,
-  nextChallenge,
-  rng,
-  allowedFields,
-  independent,
-  readProgress,
-  signature,
+  DEFAULT_STATE,
+  DEFAULT_CALIBRATION,
+  validState,
+  validCalibration,
+  move,
+  limits,
+  gearCount,
+  loadMass,
+  createAssembly,
+  point,
+  componentProperties,
+  physicalModel,
+  turningMoment,
+  torque,
+  potentialEnergy,
+  initialDirection,
+  advance,
+  restore,
 } from "../src/model.js";
-test("equal moments balance; larger turning effect goes down", () => {
-  assert.equal(
-    outcome({ leftMass: 2, leftPos: -3, pivot: 0, rightMass: 3, rightPos: 2 }),
-    "balance",
+const near = (a, b, tolerance = 1e-6) =>
+  assert.ok(
+    Math.abs(a - b) < tolerance,
+    `${a} ≠ ${b} (tolerance ${tolerance})`,
   );
-  assert.equal(
-    outcome({ leftMass: 1, leftPos: -4, pivot: 0, rightMass: 3, rightPos: 1 }),
-    "left",
-  );
-  assert.equal(
-    outcome({ leftMass: 2, leftPos: -1, pivot: 0, rightMass: 1, rightPos: 4 }),
-    "right",
-  );
+test("every legal mounting arrangement preserves both sides and the two pivot columns", () => {
+  let count = 0;
+  for (let a = 1; a <= 20; a++)
+    for (let pivot = 1; pivot <= 20; pivot++)
+      for (let b = 1; b <= 20; b++) {
+        const s = { ...DEFAULT_STATE, a, pivot, b };
+        if (!validState(s)) continue;
+        count++;
+        for (const part of ["a", "pivot", "b"])
+          for (const value of [-100, 0, 1, 10.4, 20, 100]) {
+            const next = move(s, part, value);
+            assert.ok(validState(next));
+            assert.ok(next.a < next.pivot);
+            assert.ok(next.b > next.pivot + 1);
+            const [min, max] = limits(s, part);
+            assert.equal(move(s, part, -100)[part], min);
+            assert.equal(move(s, part, 100)[part], max);
+          }
+      }
+  assert.equal(count, 969);
+  assert.equal(validState({ ...DEFAULT_STATE, a: 10 }), false);
+  assert.equal(validState({ ...DEFAULT_STATE, b: 11 }), false);
+  assert.equal(validState({ ...DEFAULT_STATE, pivot: 10.5 }), false);
+  assert.deepEqual(move(DEFAULT_STATE, "a", NaN), DEFAULT_STATE);
 });
-test("moving the pivot changes both arms, without changing loads", () => {
-  const s = { leftMass: 1, rightMass: 3, leftPos: -4, rightPos: 4, pivot: 0 };
-  assert.equal(outcome(s), "right");
-  assert.equal(outcome({ ...s, pivot: 2 }), "balance");
-});
-test("invalid positions and arbitrary weights cannot enter the model", () => {
-  for (const s of [
-    { leftMass: 1, rightMass: 1, leftPos: 0, rightPos: 2, pivot: 0 },
-    { leftMass: 4, rightMass: 1, leftPos: -1, rightPos: 2, pivot: 0 },
-    { leftMass: 1, rightMass: 1, leftPos: -1, rightPos: 2, pivot: 3 },
-  ]) {
-    assert.equal(valid(s), false);
-    assert.throws(() => outcome(s), RangeError);
+test("both offset connector CAD holes share the shaft axis at every pivot position", () => {
+  for (let pivot = 2; pivot <= 18; pivot++) {
+    const parts = createAssembly({ ...DEFAULT_STATE, pivot }),
+      offsets = parts.filter((p) => p.name === "offset");
+    assert.equal(offsets.length, 2);
+    for (const part of offsets) {
+      // Measured source hole: x=.5, z=-2, through the original Y thickness.
+      const axis = point(part, [0.5, 0, -2]);
+      near(axis[0], 0);
+      near(axis[1], 0);
+      for (const angle of [-0.3, 0, 0.3]) {
+        near(axis[0] * Math.cos(angle) - axis[1] * Math.sin(angle), 0);
+        near(axis[0] * Math.sin(angle) + axis[1] * Math.cos(angle), 0);
+      }
+      const pinColumns = [
+        point(part, [0, 0, 0])[0],
+        point(part, [1, 0, 0])[0],
+      ].sort();
+      assert.deepEqual(pinColumns, [-0.5, 0.5]);
+    }
   }
 });
-for (const type of ["weight", "distance", "pivot", "mix"]) {
-  test(`${type}: every generated challenge has a reachable solution using only allowed controls`, () => {
-    assert.ok(pool(type).length >= 20);
-    for (const c of pool(type)) {
-      assert.notEqual(outcome(c.state), "balance");
-      assert.equal(outcome(c.solution), "balance");
-      for (const k of Object.keys(c.state))
-        if (!allowedFields(type).includes(k))
-          assert.equal(c.state[k], c.solution[k]);
-      assert.ok(solutions(c.state, type).length > 0);
+test("each load step adds the declared gear and its three pins with no double-counted mass", () => {
+  const expected = [6, 17, 22, 33, 38];
+  for (let n = 0; n <= 4; n++) {
+    const s = { ...DEFAULT_STATE, loadA: n, loadB: n },
+      parts = createAssembly(s);
+    for (const owner of ["a", "b"]) {
+      const group = parts.filter((p) => p.owner === owner),
+        g = gearCount(n);
+      assert.equal(group.filter((p) => p.name === "pin").length, 5 + g.pins);
+      assert.equal(group.filter((p) => p.name === "largeGear").length, g.large);
+      assert.equal(group.filter((p) => p.name === "smallGear").length, g.small);
+      near(
+        group.reduce((total, p) => total + p.mass, 0),
+        loadMass(n),
+      );
+      near(loadMass(n), expected[n]);
     }
-  });
-  test(`${type}: varied arrangements do not repeat before the pool is exhausted`, () => {
-    const seen = [],
-      random = rng(413);
-    for (let i = 0; i < Math.min(30, pool(type).length); i++) {
-      const c = nextChallenge(type, seen, random);
-      assert.ok(!seen.includes(c.id));
-      seen.push(c.id);
-    }
-    assert.ok(
-      new Set(seen.map((s) => s.split(":").slice(1).join(":"))).size >= 20,
-    );
-  });
-}
-test("a hint, incorrect prediction, repeated test, or corrected explanation is supported practice", () => {
-  const success = {
-    predictionCorrect: true,
-    attempts: 1,
-    hint: false,
-    reasonErrors: 0,
-  };
-  assert.equal(independent(success), true);
-  for (const changes of [
-    { predictionCorrect: false },
-    { attempts: 2 },
-    { hint: true },
-    { reasonErrors: 1 },
-  ])
-    assert.equal(independent({ ...success, ...changes }), false);
+  }
 });
-test("saved progress is bounded, versioned, and resilient to corrupt storage", () => {
-  assert.deepEqual(readProgress("{broken").counts, [0, 0, 0, 0]);
+test("CAD-based mass properties are finite and equal end loads balance at the central mounting pair", () => {
+  for (let n = 0; n <= 4; n++) {
+    const model = physicalModel({ ...DEFAULT_STATE, loadA: n, loadB: n });
+    assert.ok(model.inertia > 0 && Number.isFinite(model.inertia));
+    assert.ok(model.firstY > 0);
+    near(model.firstX, 0, 1e-4);
+    assert.equal(initialDirection(model), "balance");
+    for (const part of model.parts) {
+      const p = componentProperties(part);
+      assert.ok(p.center.every(Number.isFinite));
+      assert.ok(p.inertia >= 0);
+    }
+  }
+});
+test("more mass, more distance, and moving the fulcrum affect the correct side", () => {
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, loadA: 1 })),
+    "b",
+  );
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, loadB: 1 })),
+    "a",
+  );
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, a: 4 })),
+    "b",
+  );
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, b: 17 })),
+    "a",
+  );
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, pivot: 8 })),
+    "b",
+  );
+  assert.equal(
+    initialDirection(physicalModel({ ...DEFAULT_STATE, pivot: 12 })),
+    "a",
+  );
+  const s = { ...DEFAULT_STATE, pivot: 8 };
+  const normal = turningMoment(physicalModel(s)),
+    lightBeam = turningMoment(
+      physicalModel(s, { ...DEFAULT_CALIBRATION, beam: 0.01 }),
+    );
+  assert.ok(
+    normal < lightBeam,
+    "the beam adds turning effect when its centre is beyond the shaft",
+  );
+});
+test("torque equals negative potential-energy gradient including the elevated centre of mass", () => {
+  const model = physicalModel({ ...DEFAULT_STATE, a: 3, pivot: 9, loadA: 3 });
+  for (const angle of [-0.2, 0, 0.2]) {
+    const d = 1e-6,
+      numerical =
+        -(
+          potentialEnergy(model, angle + d) - potentialEnergy(model, angle - d)
+        ) /
+        (2 * d);
+    near(torque(model, angle), numerical, 1e-9);
+  }
+  const centred = physicalModel(DEFAULT_STATE, {
+    ...DEFAULT_CALIBRATION,
+    friction: 0,
+  });
+  assert.ok(torque(centred, 0.05) > 0);
+  assert.ok(
+    torque(centred, -0.05) < 0,
+    "loads above the shaft give unstable level equilibrium, not an artificial restoring spring",
+  );
+});
+test("time integration is bounded by contact and consistent across frame rates", () => {
+  const model = physicalModel({ ...DEFAULT_STATE, loadA: 1 });
+  const simulate = (hz) => {
+    let motion = { angle: 0, velocity: 0 };
+    for (let i = 0; i < hz * 2; i++) {
+      motion = advance(model, motion, 1 / hz);
+      assert.ok(
+        motion.angle >= model.negativeStop &&
+          motion.angle <= model.positiveStop,
+      );
+    }
+    return motion;
+  };
+  const at30 = simulate(30),
+    at60 = simulate(60),
+    at120 = simulate(120);
+  near(at30.angle, model.negativeStop);
+  near(at60.angle, at120.angle);
+  near(at30.angle, at60.angle);
+  const symmetric = physicalModel(DEFAULT_STATE);
+  assert.deepEqual(advance(symmetric, { angle: 0, velocity: 0 }, 0.1), {
+    angle: 0,
+    velocity: 0,
+  });
+});
+test("friction/damping dissipate energy and high resistance can hold a small imbalance", () => {
+  const model = physicalModel({ ...DEFAULT_STATE, loadB: 1 }),
+    energy = (m) =>
+      potentialEnergy(model, m.angle) + 0.5 * model.inertia * m.velocity ** 2;
+  let motion = { angle: 0, velocity: 0 },
+    previous = energy(motion);
+  for (let i = 0; i < 240; i++) {
+    motion = advance(model, motion, 1 / 240);
+    const current = energy(motion);
+    assert.ok(current <= previous + 1e-8);
+    previous = current;
+  }
+  const small = {
+    ...physicalModel(DEFAULT_STATE),
+    firstX: 0.1,
+    calibration: { ...DEFAULT_CALIBRATION, friction: 0.3 },
+  };
+  assert.deepEqual(advance(small, { angle: 0, velocity: 0 }, 0.1), {
+    angle: 0,
+    velocity: 0,
+  });
+});
+test("settings and saved arrangements reject corrupt or physically impossible values", () => {
+  assert.ok(validCalibration(DEFAULT_CALIBRATION));
+  assert.equal(validCalibration({ ...DEFAULT_CALIBRATION, pin: 4 }), false);
+  assert.equal(
+    validCalibration({ ...DEFAULT_CALIBRATION, damping: -1 }),
+    false,
+  );
+  const fresh = restore(null);
+  assert.deepEqual(restore("garbage"), fresh);
+  assert.deepEqual(restore('{"version":1}'), fresh);
+  const s = { ...DEFAULT_STATE, a: 3, pivot: 8, loadA: 4 },
+    c = { ...DEFAULT_CALIBRATION, beam: 20 };
   assert.deepEqual(
-    readProgress(
+    restore(
       JSON.stringify({
-        version: 1,
-        counts: [100, -1, "3", 2],
-        duration: 999,
-        physical: ["equal", "fake"],
+        version: 2,
+        state: s,
+        calibration: c,
+        reducedMotion: true,
       }),
     ),
-    {
-      version: 1,
-      counts: [3, 0, 0, 2],
-      duration: 180,
-      physical: ["equal"],
-      labels: true,
-      reducedMotion: false,
-    },
+    { version: 2, state: s, calibration: c, reducedMotion: true },
   );
   assert.deepEqual(
-    readProgress(JSON.stringify({ version: 5, counts: [3, 3, 3, 3] })).counts,
-    [0, 0, 0, 0],
+    restore(
+      JSON.stringify({
+        version: 2,
+        state: { ...s, a: 19 },
+        calibration: { beam: NaN },
+      }),
+    ).state,
+    DEFAULT_STATE,
   );
-});
-test("challenge objects are independent copies", () => {
-  const c = nextChallenge("weight", [], rng(12));
-  const original = signature(c.state);
-  c.state.leftMass = 99;
-  assert.ok(pool("weight").some((p) => signature(p.state) === original));
-});
-test("the first guided arrangement isolates one easier relationship in each skill", () => {
-  const criteria = {
-    weight: (c) =>
-      c.state.pivot - c.state.leftPos === c.state.rightPos - c.state.pivot,
-    distance: (c) => c.state.leftMass === c.state.rightMass,
-    pivot: (c) => c.state.leftMass === c.state.rightMass,
-    mix: (c) => c.state.pivot === 0,
-  };
-  for (const [type, predicate] of Object.entries(criteria)) {
-    const seen = [];
-    for (let i = 0; i < 3; i++) {
-      const c = nextChallenge(type, seen, rng(i + 1), predicate);
-      assert.ok(predicate(c));
-      assert.ok(!seen.includes(c.id));
-      seen.push(c.id);
-    }
-  }
 });

@@ -1,30 +1,29 @@
-# Validation · 2026-09-21
+# Validation · exploration interface
 
-## Automated mechanics and assets
+## Mechanics and geometry
 
-`npm test`: **16 passing tests**.
+`npm test`: 11 passing tests at the time of this update.
 
-- Every one of the 678 generated challenges starts unbalanced and has a valid solution reachable with its allowed controls: weight 40, distance 60, pivot 124, combine 454.
-- Verified unequal weights can balance at inverse distances; changing the pivot changes both arms.
-- Invalid positions, weights, and crossing the pivot are rejected.
-- Varied challenge selection avoids repeating an arrangement before its eligible pool is exhausted.
-- A worked example, wrong initial prediction, repeated test, or corrected explanation cannot earn independent credit.
-- Initial scaffold filters have multiple distinct solvable arrangements.
-- Saved progress is versioned and bounded; corrupt storage falls back safely.
-- All 11 CAD buffers decompress, contain finite positions/normals, and fit their declared bounds. Mixed source units are converted to hole-pitch coordinates.
+- All 11 compressed CAD buffers contain finite vertices/normals and match declared bounds. The actual offset mesh contains the lower-hole ring centered halfway between its mounting pins.
+- All 969 legal mounting triples preserve the two reserved pivot columns under every tested move, including out-of-range and fractional input.
+- Both offset connectors' measured lower-hole centers share the shaft axis at every permitted pivot location and remain on that axis during rotation.
+- Gear counts, added pins, and complete-load masses agree for all five load settings.
+- Equal end loads balance from level at the central mounting pair. More mass, a longer arm, and an off-center pivot change turning direction as expected.
+- Beam self-weight contributes to torque; component inertia is finite and positive.
+- Torque matches the negative numerical gradient of potential energy, including elevated centers of mass.
+- Motion stays within contact bounds and agrees across 30/60/120 Hz frame rates. Resistance and damping dissipate energy.
+- Invalid saved state and impossible component-mass settings are rejected.
 
-## Browser walkthrough
+## Browser checks
 
-The scripted Chromium walkthrough covers the complete guided progression and six-round challenge, assisted practice, progress persistence, timing, physical observations, export, reset, responsive layout, and fallback behavior. See `tests/browser.mjs` for the reproducible procedure. **Final local run: passed**, including keyboard focus retention during choices.
+The Chromium walkthrough in `tests/browser.mjs` checks actual CAD-mesh dragging, larger draggable labels, both load limits, pivot limits, reverse-view drag direction, all four camera quadrants, background orbit, gear sliders, keyboard control/focus, saved-state reload, canceled drags, editable mass settings, 1024×600 and portrait layouts, touch dragging, WebGL/storage fallback, and local-only runtime requests.
 
-The local browser uses software-rendered WebGL on Linux. This establishes rendering and interaction behavior in that environment; it does not establish performance or availability on school Chromebooks.
+The local run uses software-rendered WebGL on Linux. Screenshots are captured at 1366×768, 1024×600, and 390×844. This establishes behavior in the test environment, not performance on school hardware. GitHub Actions repeats model, build, and browser checks on the PR.
 
-Screenshots in `docs/screenshots/` show the prototype in the browser. They are synthetic test sessions, not student work.
+`docs/screenshots/` contains synthetic browser sessions. No student work or identities are used.
 
-## Remaining physical and instructional checks
+## Remaining verification
 
-The part meshes are original VEX CAD; their assembly transforms are newly authored. The teacher's actual build has not been handled or tested in this environment. In particular, verify the offset connector's shaft axis, gear seating, alternate bracket locations, and pivot clearance. See the detailed checklist in `TEACHER-GUIDE.md`.
+The physical lever has not been handled here. Mass defaults combine packet estimates and CAD inferences. Shaft resistance/damping and conservative table-contact limits are uncalibrated. Verify connector seating, gear stacks, alternate mounting positions, and actual outcomes using the checklist in [TEACHER-GUIDE.md](TEACHER-GUIDE.md).
 
-No classroom mastery claim, full mechanical-advantage-unit coverage, calibrated prediction, sensor connection, or Learning Compass integration is made. Balance rounds introduce the weight–distance relationship; lifting and the force–travel tradeoff remain later instruction.
-
-No deployment has been performed as part of preparing the PR.
+Challenge mode, instructional mastery, full mechanical-advantage-unit coverage, sensor synchronization, and Learning Compass are outside this PR. No merge or deployment is performed while preparing it.

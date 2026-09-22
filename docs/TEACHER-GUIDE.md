@@ -1,55 +1,69 @@
-# Lever Workshop · first classroom prototype
+# Lever Workshop · exploration release
 
-The goal is for a student to predict and explain how weight, distance from the pivot, and pivot location affect a lever. The app uses no Newton calculations.
+Students explore how mass, distance, and pivot position affect a lever. This interface has no locked steps, quiz, timer, or scoring. No Newton conversions are required.
 
-## Suggested lesson
+## A simple classroom sequence
 
-1) Build the real lever using the existing inventory and instruction packet.
+1. Build the real lever using the inventory and instruction packet.
 
-2) Project the game. Identify the beam, pivot, left load, and right load. Explain that a **space** is a game interval, not an inch or a numbered hole.
+2. Open the workbench. Identify **load A**, **load B**, and the **pivot**. Letters stay with their physical loads as the camera turns.
 
-3) Model one **predict → change → test → explain** round. Read every instruction aloud. The beam remains supported during editing; there is no continuous tilt to follow toward an answer.
+3. Predict what moving one load toward the pivot will do.
 
-4) Let partners work through **Weight**, **Distance**, **Pivot**, and **Combine**. The first round of each of the first three skills isolates an easier relationship. Later arrangements vary. Three independent successes are needed in each skill. Worked examples and corrected attempts count as practice and lead to fresh arrangements.
+4. Drag that load by the part or its floating label. It snaps to a hole column. Let go and watch.
 
-5) Use **Real-world lab** after Weight and Pivot. Start with the packet's A and B builds. Students enter a prediction, release the physical lever, then enter what they observed. The screen follows that observation. Ask them to explain a mismatch; do not require observations to agree with an idealized model.
+5. Make the same change on the real lever. Support both ends before detaching physical parts. Compare what happens and discuss differences.
 
-6) In **Your build**, move the physical pivot or relocate a bracket to a permitted hole column, then reproduce that configuration on screen. Support both ends before detaching anything. A bracket's two pins use the two outer rows at the selected column. These alternate positions require a physical fit check before class.
+6. Repeat with a change to the gear count, then to the pivot. Ask students to describe what changed on both sides when the pivot moved.
 
-7) Use the six-round challenge after guided practice. Accuracy determines the count; there are no speed points or public leaderboards. Choose 3 minutes, 5 minutes, or no timer in Teacher tools. The timer pauses when the tab is hidden or Teacher tools are open. Physical work has no timer.
+7. Try balancing a new arrangement, then ask a student to explain why it balances. The app does not claim or record mastery.
 
-8) Ask an individual student to predict a new arrangement and explain their decision aloud. A downloaded local result is supporting practice evidence, not proof of comprehension or an authenticated grade.
+**Hold level** keeps the beam supported while students arrange parts. **Release** lets it move. Every change begins from level, including direct dragging. This is a deliberate editing support, not a simulation of taking pieces apart while the lever is moving.
 
-For a 45-minute bell, prioritize the build and the first two skills. The complete sequence is not promised to fit one class. The timer is optional; use it only after students understand the controls.
+## Controls
 
-## What the two models mean
+| Control                                   | Behavior                                                                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Drag a load, pivot, or its floating label | Snap to available mounting columns. Loads cannot cross the pivot.                                                     |
+| Two side gear sliders                     | Add/remove alternating large and small gears, each with three pins. Hover or focus highlights the corresponding load. |
+| Bottom part selector and position slider  | Keyboard alternative for all three movable parts. Arrow keys move one column; Home/End reach the allowed limits.      |
+| Drag the table                            | Orbit all the way around the model.                                                                                   |
+| Scroll / pinch                            | Zoom.                                                                                                                 |
+| Side view / Orbit / Fit view              | Side-on view, quarter-turn, and camera reset.                                                                         |
+| Hold level / Release                      | Support or release the beam.                                                                                          |
+| Reset                                     | Restore load locations, gear counts, and central pivot. Keeps model calibration.                                      |
+| Model                                     | Show assumptions, enter measured masses, or reduce animation.                                                         |
 
-| View | Weights | Balance and movement |
-| --- | --- | --- |
-| Learn / Challenge | 1, 2, or 3 equal practice discs; colored discs are intentionally different from the real gear recipes | Ideal model: weight units × distance on each side. Beam and brackets have no modeled weight; weights act at the marked slots. A small tilt indicates direction only. |
-| Real-world lab | Original VEX 60-tooth gear, optionally with a 36-tooth gear; recipes from the existing packet | The student's reported observation drives the view. No computed real-world outcome, sensor link, or automatic calibration is claimed. |
+When looking straight along the beam, its mounting positions overlap on screen. Turn the camera slightly or use the position slider. Escape, pointer cancellation, or leaving the window during a part drag restores the starting arrangement.
 
-The real packet gives about **17 g** for the large-gear end assembly and **22 g** for the large-plus-small assembly, including the bracket and pins. They are not a 1:2 pair. We do not use these approximate numbers as equal game units.
+The workbench fills the window. The top full-screen button can also hide browser chrome where supported. On narrow portrait screens, the gear sliders move above the scene. Comic Sans is preferred; bundled Comic Neue is used when it is unavailable.
 
-The CAD offset connector has a lower shaft hole aligned with one mounting-pin column. With its current modeled orientation, a mounting pair at columns **10 and 11** puts the shaft axis at **column 11**, half a hole pitch from the beam's geometric midpoint. Do not assume that the mounting-pair midpoint is the shaft axis. The game's physical view aligns the shaft and connector holes; it does not claim that equal end loads must balance in that position. Verify the actual connector orientation and assembly on the classroom build.
+## Parts and balance
 
-Moving the real pivot also changes the beam's own turning effect. Bracket mass, load center positions, shaft friction, pin fit, and unequal parts can matter. Use these as observations to discuss. Exact real-world numerical balance is not scored in this prototype.
+The beam has 20 numbered mounting columns. A load bracket uses the outer two holes at one column. The pivot uses a neighboring pair: **10 + 11** is the central position. Load A must be before both pivot columns, and load B must be after them.
 
-## Before classroom release
+**Correction to the first release:** our earlier guide incorrectly put the offset connector's lower shaft hole directly beneath column 11. Inspection of the original CAD places it halfway between its two mounting pins. With the pins in **10 and 11**, the shaft lies at the beam midpoint. The new shared assembly transforms put both connector holes on that shaft axis. The earlier half-pitch error was in the software, not in the teacher's instructions.
 
-- [ ] Compare the complete 3D assembly with one actual built lever: beam orientation, bracket alignment, pin triangles, shaft clearance, gear seating, and collar gap.
-- [ ] Check the offset-connector orientation and which numbered hole lies directly above the shaft.
-- [ ] Physically test the packet's A and B arrangements. Record what happens; do not assume A must balance.
-- [ ] Check every offered alternate pivot pair (6–7, 8–9, 10–11, 12–13, 14–15) and bracket column (left 1/3/5; right 16/18/20) for fit and clearance. The UI excludes close pairs, but CAD clearance is not a physical test.
-- [ ] Open the deployed site on a school Chromebook and school network. Check 3D performance, touchpad, zoom, keyboard, and the fallback diagram. A local Chromium test is not school-device verification.
-- [ ] Complete one lesson as a student and observe one student doing a fresh round. Check the language and workload.
+| Slider setting | Added gears       | Added pins | Approximate complete load |
+| -------------- | ----------------- | ---------- | ------------------------- |
+| 0              | None              | 0          | 6 g                       |
+| 1              | 1 large           | 3          | 17 g                      |
+| 2              | 1 large + 1 small | 6          | 22 g                      |
+| 3              | 2 large + 1 small | 9          | 33 g                      |
+| 4              | 2 large + 2 small | 12         | 38 g                      |
 
-## Teacher controls and local progress
+The bracket's five permanent pins remain in every setting. Packet masses give approximately 6 g for that bracket assembly, 11 g for a large gear with three pins, and 5 g for a small gear with three pins. These are not equal game-weight units.
 
-The app needs no sign-in and collects no student names. Progress is stored in the browser profile, not sent to a server. On a shared Chromebook, select **Teacher tools → New student** before a new student begins. Browser storage can be cleared or changed; it is not a secure gradebook.
+The beam and pivot connectors also contribute to balance. The model uses their CAD shapes and estimated masses, accounts for actual off-center gear stacks, and updates rotational inertia as parts move. Because the loads sit above the shaft, level balance can be unstable: a disturbed lever may continue tipping. The display reports whether the arrangement balances **from level**.
 
-**Download evidence** creates a JSON file containing progress and this tab's completed rounds: starting arrangement, final arrangement, initial prediction, attempts, hint use, explanation retries, and independent status. Physical rounds contain the chosen recipes, hole locations, prediction, and observation. Reloading preserves counts but not the detailed round history. No Learning Compass integration is implemented yet.
+The simulation stops at a conservative estimate of table contact. Shaft friction and motion damping are adjustable approximations. Settings include their units for teacher calibration; students do not need to calculate them. There is no live sensor synchronization. See [MECHANICS.md](MECHANICS.md) for equations and assumptions.
 
-The keyboard-accessible buttons are the primary controls. Dragging the 3D view rotates the camera; it does not move parts. Use **Side**, **3D**, or the reset button to restore a useful view. Set **Reduce lever animation** or use the device's reduced-motion setting. A 2D diagram is available automatically when 3D cannot load; the same learning sequence remains usable.
+## Check against the classroom build
 
-Comic Sans is the first font choice. Devices without it use bundled Comic Neue. There are no third-party runtime CDN calls.
+- Compare shaft threading, both offset connectors, gear seating, pin patterns, collar clearance, and bracket orientation with an assembled lever.
+- Weigh the beam, a bare pin, an offset connector, the complete bracket, and both gear-plus-three-pin packs if a gram scale is available. Enter these in **Model → Adjust measured masses and motion**.
+- Check fit at alternate bracket and pivot locations, especially the closest permitted positions and the three/four-gear stacks. CAD alignment is not a physical fit test.
+- Compare central equal loads, unequal end loads, and an off-center pivot. Record any difference rather than requiring the real build to match uncalibrated defaults.
+- Open on a school Chromebook and school network; check the touchpad, 3D performance, and keyboard alternatives. Local Chromium checks do not establish school-device performance.
+
+Saved arrangements and settings belong to the browser profile, not an identified student. **Reset** restores the arrangement; **Restore estimates** resets calibration. No student names, grades, progress exports, or Learning Compass integration are part of this release.
