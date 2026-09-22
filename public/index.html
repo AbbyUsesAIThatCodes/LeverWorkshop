@@ -6,112 +6,243 @@
     <meta name="theme-color" content="#143e40" />
     <meta
       name="description"
-      content="A hands-on 3D workshop for exploring weight, distance, and balance."
+      content="A hands-on 3D workbench for exploring weight, distance, and balance."
     />
     <title>Lever Workshop</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="Lever Workshop home"
-        ><span class="brand-icon">△</span
-        ><span
-          >LEVER <b>WORKSHOP</b><small>ENGINEERING ESSENTIALS</small></span
-        ></a
-      >
-      <nav aria-label="Workshop modes">
-        <button data-mode="guided" class="nav active">Learn</button
-        ><button data-mode="trials" class="nav">Challenge</button
-        ><button data-mode="physical" class="nav">Real-world lab</button>
-      </nav>
-      <button id="teacher" class="quiet">
-        Teacher tools <span aria-hidden="true">↗</span>
-      </button>
-    </header>
-    <main>
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">LITTLE CHANGES. BIG DISCOVERIES.</p>
-          <h1>Find your balance.</h1>
-          <p class="subtitle">
-            Make a prediction. Try an idea. See what changes.
-          </p>
-        </div>
-        <div class="session-pill">
-          <span class="live-dot"></span
-          ><span id="session-label">Your workshop</span>
-        </div>
+    <main id="app" aria-label="Lever Workshop">
+      <div id="scene"><p id="scene-loading">Setting up your workbench…</p></div>
+      <div id="fallback" hidden>
+        <p>Diagram view · use the controls below to move each part.</p>
+        <svg
+          id="fallback-svg"
+          viewBox="0 0 800 400"
+          role="img"
+          aria-label="Lever diagram"
+        ></svg>
       </div>
-      <div class="workspace">
-        <section class="stage-card" aria-label="Interactive lever">
-          <div class="stage-top">
-            <span class="pill" id="model-label">EQUAL PRACTICE WEIGHTS</span
-            ><button id="labels" class="glass" aria-pressed="true">
-              Distances on
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">△</span>
+          <div>
+            LEVER <b>WORKSHOP</b><small>EXPLORE · MOVE · DISCOVER</small>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="help" class="glass">How to play</button
+          ><button id="settings" class="glass" aria-label="Model settings">
+            ⚙ <span>Model</span></button
+          ><button
+            id="fullscreen"
+            class="glass"
+            aria-label="Enter full screen"
+            title="Full screen"
+          >
+            ⛶
+          </button>
+        </div>
+      </header>
+      <div class="hint">
+        Drag a <b>load</b> or the <b>pivot</b>. Drag the table to look around.
+      </div>
+      <section
+        class="load-panel load-a glass"
+        aria-labelledby="load-a-title"
+        data-highlight="a"
+      >
+        <h2 id="load-a-title"><span class="identity">A</span> Load A</h2>
+        <output id="mass-a" for="load-a"></output>
+        <label for="load-a">Add gears</label>
+        <div class="vertical-range">
+          <span aria-hidden="true">+</span
+          ><input
+            id="load-a"
+            type="range"
+            min="0"
+            max="4"
+            step="1"
+            value="2"
+            aria-describedby="recipe-a"
+          /><span aria-hidden="true">−</span>
+        </div>
+        <p id="recipe-a"></p>
+      </section>
+      <section
+        class="load-panel load-b glass"
+        aria-labelledby="load-b-title"
+        data-highlight="b"
+      >
+        <h2 id="load-b-title"><span class="identity">B</span> Load B</h2>
+        <output id="mass-b" for="load-b"></output>
+        <label for="load-b">Add gears</label>
+        <div class="vertical-range">
+          <span aria-hidden="true">+</span
+          ><input
+            id="load-b"
+            type="range"
+            min="0"
+            max="4"
+            step="1"
+            value="2"
+            aria-describedby="recipe-b"
+          /><span aria-hidden="true">−</span>
+        </div>
+        <p id="recipe-b"></p>
+      </section>
+      <div id="part-tags" aria-label="Draggable parts">
+        <button
+          class="part-tag"
+          data-part="a"
+          aria-label="Drag or select load A"
+        >
+          <b>A</b><span class="tag-info"></span
+          ><span aria-hidden="true">⠿</span>
+        </button>
+        <button
+          class="part-tag pivot-tag"
+          data-part="pivot"
+          aria-label="Drag or select the pivot"
+        >
+          <b>Pivot</b><span class="tag-info"></span
+          ><span aria-hidden="true">⠿</span>
+        </button>
+        <button
+          class="part-tag"
+          data-part="b"
+          aria-label="Drag or select load B"
+        >
+          <b>B</b><span class="tag-info"></span
+          ><span aria-hidden="true">⠿</span>
+        </button>
+      </div>
+      <div class="bottom-ui">
+        <div class="status-row">
+          <div
+            class="beam-status glass"
+            id="beam-status"
+            role="status"
+            aria-live="polite"
+          >
+            Ready
+          </div>
+          <div class="camera-controls glass" aria-label="Camera controls">
+            <button id="view-side" title="View the beam from the side">
+              Side view</button
+            ><button id="view-turn" title="Turn the camera a quarter turn">
+              Orbit ↻</button
+            ><button id="view-reset" title="Fit the whole lever in view">
+              Fit view
             </button>
           </div>
-          <div
-            id="scene"
-            role="img"
-            aria-label="3D lever with a left weight, a right weight, and a movable pivot."
-          >
-            <p id="scene-loading">Setting up your workbench…</p>
-          </div>
-          <div id="fallback" hidden>
-            <h2>Use the diagram view</h2>
-            <p>
-              This device could not start 3D. The same lessons and controls work
-              here.
-            </p>
-            <svg
-              id="fallback-svg"
-              viewBox="0 0 700 280"
-              role="img"
-              aria-label="Lever diagram"
-            ></svg>
-          </div>
-          <div class="scene-caption">
-            <span id="beam-status"
-              ><span class="status-dot"></span>Supported · ready to
-              predict</span
-            >
-            <div class="view-controls" aria-label="Camera controls">
-              <button id="view-3d" aria-pressed="true">3D</button
-              ><button id="view-side" aria-pressed="false">Side</button
-              ><button id="view-reset" aria-label="Reset camera">↺</button>
-            </div>
-          </div>
-          <div class="readings" id="readings"></div>
-          <div class="workbench-note" id="model-note">
-            Each practice disc is <b>one equal weight unit</b>. The game beam is
-            treated as weightless.
-          </div>
-        </section>
-        <aside
-          class="lesson-card"
-          id="lesson"
-          aria-label="Lesson and controls"
-        ></aside>
-      </div>
-      <section class="journey" aria-label="Learning journey">
-        <div class="journey-intro">
-          <span class="eyebrow">YOUR NEXT DISCOVERY</span>
-          <p>Small steps. Strong ideas.</p>
         </div>
-        <div id="journey-steps"></div>
-      </section>
-      <footer>
-        <span>Built for curious minds &amp; hands-on learning.</span
-        ><span
-          >VEX IQ parts · classroom prototype
-          <button id="about" class="text-button">About the model</button></span
-        >
-      </footer>
+        <section class="control-dock glass" aria-label="Lever controls">
+          <div
+            class="part-choice"
+            role="group"
+            aria-label="Select a part to move"
+          >
+            <button data-select="a" aria-pressed="false">Load A</button
+            ><button data-select="pivot" aria-pressed="true">Pivot</button
+            ><button data-select="b" aria-pressed="false">Load B</button>
+          </div>
+          <div class="position-control">
+            <div>
+              <label for="position" id="position-label">Move pivot</label
+              ><output id="position-value" for="position"></output>
+            </div>
+            <input
+              id="position"
+              type="range"
+              min="2"
+              max="18"
+              step="1"
+              value="10"
+            />
+          </div>
+          <button id="hold" aria-pressed="false">Hold level</button
+          ><button
+            id="reset"
+            title="Put both loads at the ends and the pivot in the middle"
+          >
+            Reset
+          </button>
+        </section>
+      </div>
     </main>
-    <dialog id="dialog">
-      <div id="dialog-content"></div>
-      <button id="close-dialog" class="primary">Back to the workshop</button>
+    <dialog id="help-dialog">
+      <button class="dialog-close" aria-label="Close instructions">×</button>
+      <p class="eyebrow">YOUR WORKBENCH</p>
+      <h1>Try a little change.</h1>
+      <ol>
+        <li><b>Drag a load or the pivot</b> to another hole.</li>
+        <li>Let go. Watch which side drops.</li>
+        <li>Use a side slider to add or remove gears.</li>
+        <li>Try the same change on your real lever.</li>
+      </ol>
+      <p>
+        The beam is held level while you drag a part. Each load stays on its own
+        side of the pivot. The pivot uses two neighboring hole columns.
+      </p>
+      <p>
+        <b>Look around:</b> drag the table to orbit all the way around. Scroll
+        or pinch to zoom. Use <b>Fit view</b> if you get lost.
+      </p>
+      <p>
+        <b>Keyboard:</b> choose Load A, Pivot, or Load B below, then use the
+        position slider. The arrow keys move one hole at a time. Use Tab to
+        reach the gear sliders.
+      </p>
+      <p>
+        <b>A and B stay with their parts</b> as the camera turns. Point at a
+        gear slider to light up its load.
+      </p>
+      <button class="primary dialog-close">Let’s explore</button>
+    </dialog>
+    <dialog id="settings-dialog">
+      <button class="dialog-close" aria-label="Close model settings">×</button>
+      <p class="eyebrow">TEACHER SETTINGS</p>
+      <h1>About this model</h1>
+      <p>
+        Gravity acts on the beam, connectors, brackets, gears, and pins. Moving
+        the pivot changes the beam’s own turning effect too.
+      </p>
+      <p>
+        <b>Masses are approximate.</b> Bracket and gear-pack masses come from
+        the build packet. Beam, pin, and connector masses are estimated from the
+        CAD. We have not calibrated shaft friction against your classroom lever.
+      </p>
+      <p>
+        The high-mounted loads can tip farther after a small tilt. Each change
+        starts level. Use <b>Hold level</b> to set up an arrangement, then
+        release it.
+      </p>
+      <details>
+        <summary>Adjust measured masses and motion</summary>
+        <form id="calibration-form">
+          <div id="mass-inputs"></div>
+          <p class="small">
+            Gear-pack masses include three pins. Bracket mass includes its five
+            permanent pins. All masses are grams.
+          </p>
+          <p id="calibration-error" role="alert"></p>
+          <div class="form-actions">
+            <button type="submit" class="primary">Apply settings</button
+            ><button type="button" id="defaults">Restore estimates</button>
+          </div>
+        </form>
+      </details>
+      <label class="check-label"
+        ><input id="reduced-motion" type="checkbox" /> Reduce lever
+        animation</label
+      >
+      <p class="small">
+        Your arrangement and settings stay in this browser. No names, accounts,
+        or results are collected.
+      </p>
+      <button class="primary dialog-close">Back to the workbench</button>
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
     <noscript

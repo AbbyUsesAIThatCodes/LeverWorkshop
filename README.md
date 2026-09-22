@@ -1,23 +1,20 @@
 # Lever Workshop
 
-A small browser workshop for Engineering Essentials: recognize a VEX IQ lever, predict what will happen, change one thing, test it, and explain the result.
+A full-window 3D workbench for Engineering Essentials. Drag the two VEX IQ loads and their pivot, add gears, and explore what makes a lever balance.
 
-**Classroom prototype — physical build verification and a school-device check remain required.** The real-world view records student observations; it is not a calibrated digital twin.
+![Lever Workshop exploration interface](docs/screenshots/workshop.png)
 
-![Lever Workshop browser prototype](docs/screenshots/workshop.png)
+## Explore
 
-## Included
+- Drag a load or the pivot itself, or use its larger floating label. Parts snap to actual mounting columns and cannot cross one another.
+- Add up to four alternating large/small gears on either load. Each gear brings its three pins. Point at a side slider to highlight its physical load, even from behind the lever.
+- Drag the table to orbit a full 360°. Scroll or pinch to zoom; **Fit view** restores the starting camera.
+- Use **Hold level** to arrange parts, then **Release**. Dragging a part holds the beam level until release.
+- Keyboard users can select **Load A**, **Pivot**, or **Load B** and use the position slider. The gear sliders are keyboard accessible too.
 
-- Original VEX IQ part meshes in a 3D tabletop workshop, with side view and camera reset.
-- Four guided skills: weight, distance, pivot, and combined changes.
-- 678 checked, solvable challenge arrangements; discrete slots and three equal practice-weight levels.
-- Three independent successes per skill, with worked examples and fresh follow-up practice.
-- Six-round challenges, with optional 3-minute or 5-minute timing.
-- Physical checkpoints using the packet's actual gear recipes, movable brackets and pivot, and manually recorded observations.
-- Local progress, teacher controls, downloadable practice evidence, keyboard controls, reduced motion, and a diagram fallback.
-- Static GitHub Pages build; no account, backend, analytics, or runtime CDN.
+This release has one exploration interface. Guided progression and Challenge mode from the first prototype have been removed. The next Challenge PR is specified in the [roadmap](docs/ROADMAP.md).
 
-Practice discs are equal units. The real large-gear and large-plus-small assemblies are approximately 17 g and 22 g and are **not** treated as a 1:2 pair. No Newton conversion is needed. See the [teacher guide](docs/TEACHER-GUIDE.md) for model boundaries and the physical checklist.
+The model includes the beam, connectors, brackets, gears, pins, their centers of mass, and rotational inertia. **Its masses and friction remain approximate until compared with a classroom build.** Teacher settings accept measured masses. It is a simulation, with no sensor connection to the real lever. See the [teacher guide](docs/TEACHER-GUIDE.md) and [mechanics notes](docs/MECHANICS.md).
 
 ## Run locally
 
@@ -29,7 +26,7 @@ npm run build
 npm run dev
 ```
 
-Open <http://localhost:4173/LeverWorkshop/>. Serve `dist/` through HTTP; opening the HTML with `file://` is not supported because part meshes are loaded as assets.
+Open <http://localhost:4173/LeverWorkshop/>. Serve `dist/` through HTTP; opening `index.html` with `file://` cannot load the part assets.
 
 ```sh
 npm test
@@ -37,21 +34,25 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-The browser test starts its own server when needed. `CHROMIUM_EXECUTABLE` optionally selects an existing Chromium binary. `BROWSER_SOFTWARE_GL=1` enables software WebGL for headless Linux test environments.
+The browser test starts its own server when needed. `CHROMIUM_EXECUTABLE` optionally selects an existing Chromium binary. `BROWSER_SOFTWARE_GL=1` enables software WebGL on headless Linux.
 
 ## GitHub Pages
 
-After reviewing and merging the PR, open **Settings → Pages → Build and deployment → Source → GitHub Actions**. Run **Deploy Pages** manually from the Actions tab. Subsequent pushes to `main` run tests and deploy automatically. The expected URL is <https://abbyusesaithatcodes.github.io/LeverWorkshop/>; this URL is not a claim that deployment has already succeeded.
+The game address is **<https://abbyusesaithatcodes.github.io/LeverWorkshop/>**. The repository address shows code and the README, not the game.
 
-The workflow builds with `npm ci`, tests the mechanics, and uploads only `dist/`. It does not publish source curriculum PDFs. PR checks build and test without deploying.
+In **Settings → Pages**, the source is **GitHub Actions**. After the PR is reviewed and merged, a push to `main` runs **Deploy Pages**, builds the site, and publishes `dist/`. PR checks do not deploy. The live site keeps its previous version until a merge and successful deployment.
+
+Everything is served locally from the static site: meshes, fonts, and JavaScript. No accounts, backend, analytics, or runtime CDN. The current arrangement and model settings are saved only in this browser; old lesson-progress records are ignored. Exploration also works without storage and has a diagram fallback if WebGL cannot start.
 
 ## Structure
 
-- `src/model.js`: independent, deterministic lever rules and challenge generation.
-- `src/scene.js`: original part meshes, assembly transforms, scene, and camera.
-- `src/app.js`: lesson progression, physical observations, timer, and local evidence.
-- `public/`: static page, styles, and compressed part meshes.
-- `docs/`: teacher guide, validation notes, and CAD provenance.
-- `tests/`: model coverage and student browser walkthrough.
+- `src/assembly.js`: mounting rules, component transforms, mass recipes.
+- `src/part-properties.json`: CAD volume, centroid, and inertia measurements.
+- `src/model.js`: gravity, rotation, contact bounds, and saved-state validation.
+- `src/scene.js`: original part meshes, lighting, camera, and direct dragging.
+- `src/app.js`: overlay controls, settings, and diagram fallback.
+- `public/`: page, styles, and compressed meshes.
+- `docs/`: teacher guide, mechanics, validation, future scope, and CAD provenance.
+- `tests/`: geometry, mechanics, and browser interaction checks.
 
-See [third-party notices](THIRD_PARTY_NOTICES.md). VEX Robotics is not affiliated with this independent classroom project. Learning Compass is a future integration, not part of this release.
+See [third-party notices](THIRD_PARTY_NOTICES.md). VEX Robotics is not affiliated with this independent classroom project. Learning Compass integration is future work.

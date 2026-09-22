@@ -24,3 +24,26 @@ test("all CAD buffers are present, finite, and within their declared bounds", ()
   assert.ok(meta.shaft.max[2] - meta.shaft.min[2] > 5.8);
   assert.ok(meta.largeGear.max[0] > meta.smallGear.max[0]);
 });
+
+test("the actual offset mesh has its lower shaft-hole ring halfway between mounting pins", () => {
+  const meta = JSON.parse(
+    readFileSync("public/assets/parts.json", "utf8"),
+  ).offset;
+  const bytes = gunzipSync(readFileSync("public/assets/parts.bin.gz"));
+  const ring = [];
+  for (let i = 0; i < meta.count; i++) {
+    const x = bytes.readFloatLE(meta.offset + i * 24);
+    const z = bytes.readFloatLE(meta.offset + i * 24 + 8);
+    if (Math.abs(Math.hypot(x - 0.5, z + 2) - 0.25) < 0.008) ring.push([x, z]);
+  }
+  assert.ok(
+    ring.length > 200,
+    "a complete shaft-hole ring, not a few incidental vertices",
+  );
+  const mean = (axis) =>
+    ring.reduce((sum, p) => sum + p[axis], 0) / ring.length;
+  assert.ok(Math.abs(mean(0) - 0.5) < 0.007);
+  assert.ok(Math.abs(mean(1) + 2) < 0.007);
+  assert.ok(Math.min(...ring.map((p) => p[0])) < 0.26);
+  assert.ok(Math.max(...ring.map((p) => p[0])) > 0.74);
+});

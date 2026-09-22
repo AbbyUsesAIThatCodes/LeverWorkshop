@@ -2,7 +2,6 @@ import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
-import { outcome, solutions, allowedFields, reasonFor } from "../src/model.js";
 const url = "http://127.0.0.1:4173/LeverWorkshop/";
 let server;
 try {
@@ -33,7 +32,7 @@ const browser = await chromium.launch({
 const errors = [],
   external = [];
 await mkdir("artifacts", { recursive: true });
-const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("request", (r) => {
   if (
@@ -42,201 +41,273 @@ page.on("request", (r) => {
   )
     external.push(r.url());
 });
-async function readState() {
-  return page.evaluate(() => {
-    const text = document.querySelector("#scene").getAttribute("aria-label");
-    const match = text.match(
-      /Left: (\d+) units, (\d+) spaces from pivot\. Right: (\d+) units, (\d+) spaces/,
-    );
-    const pivot = Number(
-      document
-        .querySelectorAll(".reading b")[1]
-        .textContent.replace("Slot ", ""),
-    );
-    return {
-      leftMass: +match[1],
-      leftPos: pivot - Number(match[2]),
-      pivot,
-      rightMass: +match[3],
-      rightPos: pivot + Number(match[4]),
-    };
-  });
-}
-async function solveRound(
-  type,
-  { hint = false, wrongPrediction = false } = {},
-) {
-  const s = await readState();
-  const prediction = wrongPrediction
-    ? outcome(s) === "left"
-      ? "right"
-      : "left"
-    : outcome(s);
-  await page.locator(`[data-prediction="${prediction}"]`).click();
-  assert.equal(
-    await page.evaluate(() => document.activeElement.dataset.prediction),
-    prediction,
-    "keyboard focus survives a choice",
+const state = () =>
+  page.evaluate(
+    () => JSON.parse(localStorage.getItem("lever-workshop-v2")).state,
   );
-  await page.locator("#predict-test").click();
-  if (hint) await page.locator("#hint").click();
-  const solution = solutions(s, type)[0];
-  for (const field of allowedFields(type)) {
-    const b = page.locator(
-      `[data-field="${field}"][data-value="${solution[field]}"]`,
-    );
-    if (await b.count()) await b.click();
+async function range(id, value) {
+  await page.locator(id).evaluate((el, value) => {
+    el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, String(value));
+}
+async function tagCenter(part) {
+  const b = await page.locator(`[data-part="${part}"]`).boundingBox();
+  assert.ok(b, `visible ${part} tag`);
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+}
+async function dragTag(part, pixels) {
+  const p = await tagCenter(part);
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.down();
+  await page.mouse.move(p.x + pixels, p.y, { steps: 12 });
+  await page.mouse.up();
+}
+async function fits() {
+  const dimensions = await page.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+  if (
+    dimensions.scrollWidth > dimensions.width ||
+    dimensions.scrollHeight > dimensions.height
+  ) {
+    await page.screenshot({ path: "artifacts/viewport-overflow.png" });
+    assert.fail(`Viewport overflow: ${JSON.stringify(dimensions)}`);
   }
-  await page.locator("#test-change").click();
-  await page
-    .getByRole("button", { name: reasonFor(type).correct, exact: false })
-    .click();
+  const b = await page.locator("#scene canvas").boundingBox();
+  const size = page.viewportSize();
+  assert.equal(b.width, size.width);
+  assert.equal(b.height, size.height);
 }
 try {
-  await page.clock.install();
   await page.goto(url);
   await page.waitForFunction(
+    () => document.querySelector("#app").dataset.ready === "true",
+  );
+  await page.waitForTimeout(400);
+  await fits();
+  assert.match(await page.locator("#beam-status").innerText(), /Balanced/);
+  assert.equal(
+    await page.getByRole("button", { name: "Challenge", exact: true }).count(),
+    0,
+  );
+  assert.equal(await page.locator("#lesson").count(), 0);
+  await page.screenshot({ path: "artifacts/workshop.png" });
+  // Zooming can project a floating label beyond the viewport; it must stay clipped.
+  await page.mouse.move(900, 400);
+  await page.mouse.wheel(0, -1200);
+  await page.waitForTimeout(200);
+  await fits();
+  await page.locator("#view-reset").click();
+
+  await page.locator("#hold").click();
+  await page.locator("#view-side").click();
+  await page.waitForTimeout(150);
+  // An actual CAD upright, beneath the A tag, must be directly draggable.
+  let a = await tagCenter("a");
+  await page.mouse.move(a.x - 7, a.y + 150);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 103, a.y + 150, { steps: 12 });
+  await page.mouse.up();
+  let s = await state();
+  assert.ok(
+    s.a > 1 && s.a < s.pivot,
+    `mesh drag moved load A: ${JSON.stringify(s)}`,
+  );
+  // Dragging tags provides larger touch targets for the same parts.
+  await dragTag("b", -110);
+  s = await state();
+  assert.ok(s.b < 20 && s.b > s.pivot + 1);
+  await dragTag("pivot", 70);
+  s = await state();
+  assert.ok(s.pivot > 10 && s.pivot < s.b - 1);
+  await dragTag("a", 800);
+  s = await state();
+  assert.equal(s.a, s.pivot - 1, "A cannot cross either pivot mounting column");
+  await dragTag("pivot", -800);
+  s = await state();
+  assert.equal(s.pivot, s.a + 1, "pivot cannot cross A");
+  await dragTag("b", -800);
+  s = await state();
+  assert.equal(s.b, s.pivot + 2, "B cannot cross pivot");
+  await page.locator("#reset").click();
+  await page.locator("#hold").click();
+  // Two quarter turns reverse screen sides. A remains A and drag direction reverses.
+  await page.locator("#view-turn").click();
+  await page.locator("#view-turn").click();
+  await page.waitForFunction(
     () =>
-      document.querySelector("#scene canvas") ||
-      !document.querySelector("#fallback").hidden,
+      document.querySelector('[data-part="a"]').getBoundingClientRect().x >
+      document.querySelector('[data-part="b"]').getBoundingClientRect().x,
   );
-  await page.waitForTimeout(600);
-  assert.equal(
-    await page.locator("#fallback").isVisible(),
-    false,
-    "3D renders on the primary browser",
+  a = await tagCenter("a");
+  let b = await tagCenter("b");
+  assert.ok(a.x > b.x, "camera reaches the opposite side");
+  await dragTag("a", -100);
+  s = await state();
+  assert.ok(s.a > 1, "back-view drag moves A toward pivot");
+  await page.locator("#load-a").hover();
+  assert.ok(
+    await page
+      .locator(".load-a")
+      .evaluate((el) => el.classList.contains("active")),
   );
+  await range("#load-a", 4);
+  s = await state();
+  assert.equal(s.loadA, 4);
+  assert.equal(s.loadB, 2);
+  assert.match(await page.locator("#mass-a").innerText(), /38 g/);
+  assert.match(await page.locator("#recipe-a").innerText(), /12 pins/);
+  await page.screenshot({ path: "artifacts/opposite-view.png" });
+  await page.locator("#view-turn").click();
+  await page.locator("#view-turn").click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-part="a"]').getBoundingClientRect().x <
+      document.querySelector('[data-part="b"]').getBoundingClientRect().x,
+  );
+  a = await tagCenter("a");
+  b = await tagCenter("b");
+  assert.ok(a.x < b.x, "full horizontal orbit returns to original side");
+  // Keyboard editing retains focus, respects limits, and is immediately repeatable.
+  await page.locator('[data-select="pivot"]').click();
+  await page.locator("#position").focus();
+  const before = (await state()).pivot;
+  await page.keyboard.press("ArrowRight");
+  assert.equal((await state()).pivot, before + 1);
   assert.equal(
-    await page.locator("#predict-test").isDisabled(),
+    await page
+      .locator("#position")
+      .evaluate((el) => el === document.activeElement),
     true,
-    "prediction is required",
-  );
-  assert.equal(
-    await page.locator("[data-field]").count(),
-    0,
-    "editing is locked until prediction",
-  );
-  await page.screenshot({
-    path: "artifacts/workshop-desktop.png",
-    fullPage: true,
-  });
-  await solveRound("weight", { hint: true });
-  assert.match(await page.locator("#lesson").innerText(), /Practice complete/);
-  assert.equal(
-    JSON.parse(
-      (await page.evaluate(() => localStorage.getItem("lever-workshop-v1"))) ||
-        '{"counts":[0]}',
-    ).counts[0],
-    0,
-  );
-  await page.locator("#next").click();
-  await solveRound("weight", { wrongPrediction: true });
-  assert.match(await page.locator("#lesson").innerText(), /Practice complete/);
-  await page.locator("#next").click();
-  for (const type of ["weight", "distance", "pivot", "mix"]) {
-    for (let i = 0; i < 3; i++) {
-      await solveRound(type);
-      assert.match(
-        await page.locator("#lesson").innerText(),
-        /Independent success/,
-      );
-      await page.locator("#next").click();
-    }
-  }
-  assert.equal(
-    await page.locator("#start-trials").isVisible(),
-    true,
-    "all guided skills unlock trials",
   );
   await page.reload();
-  assert.deepEqual(
-    JSON.parse(
-      await page.evaluate(() => localStorage.getItem("lever-workshop-v1")),
-    ).counts,
-    [3, 3, 3, 3],
+  await page.waitForFunction(
+    () => document.querySelector("#app").dataset.ready === "true",
   );
-  await page.getByRole("button", { name: "Challenge", exact: true }).click();
-  await page.locator("#start-trials").click();
-  await page.locator("#teacher").click();
-  const before = await page.locator("#timer").textContent();
-  await page.clock.fastForward(10000);
-  await page.locator("#close-dialog").click();
-  assert.equal(
-    await page.locator("#timer").textContent(),
-    before,
-    "teacher panel pauses timer",
-  );
-  for (const type of [
-    "weight",
-    "distance",
-    "pivot",
-    "weight",
-    "distance",
-    "mix",
-  ]) {
-    await solveRound(type);
-    if (type !== "mix") await page.locator("#next").click();
-  }
-  assert.match(await page.locator("#lesson").innerText(), /6 \/ 6/);
-  await page.screenshot({
-    path: "artifacts/challenge-complete.png",
-    fullPage: true,
-  });
-  await page.locator("#start-trials").click();
-  await page.clock.fastForward(181000);
-  assert.match(await page.locator("#lesson").innerText(), /timer ended/);
-  await page.locator("#untimed").click();
-  assert.equal(await page.locator("#timer").textContent(), "No timer");
-  await page
-    .getByRole("button", { name: "Real-world lab", exact: true })
-    .click();
-  await page.locator('[data-lab-prediction="balance"]').click();
-  await page.locator("#lab-ready").click();
-  await page.locator('[data-observation="right"]').click();
-  assert.match(
-    await page.locator("#lesson").innerText(),
-    /different from your prediction/,
-  );
-  assert.match(
-    await page.locator("#beam-status").innerText(),
-    /Observed: right side down/,
-  );
-  await page.locator('[data-lab="own"]').click();
-  await page.locator('[data-physical-pivot="1"]').click();
-  await page.locator('[data-hole-side="left"][data-hole="3"]').click();
-  await page.locator('[data-recipe-side="left"][data-recipe="1"]').click();
-  assert.match(
-    await page.locator("#readings").innerText(),
-    /Bracket at hole 3/,
-  );
-  assert.match(await page.locator("#readings").innerText(), /12 & 13/);
-  await page.screenshot({ path: "artifacts/physical-lab.png", fullPage: true });
-  await page.locator("#teacher").click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.locator("#export").click();
-  const download = await downloadPromise;
-  assert.equal(download.suggestedFilename(), "lever-workshop-evidence.json");
+  assert.equal((await state()).pivot, before + 1);
+  assert.equal((await state()).loadA, 4);
   await page.locator("#reset").click();
-  await page.locator("#confirm-reset").click();
-  assert.deepEqual(
-    JSON.parse(
-      await page.evaluate(() => localStorage.getItem("lever-workshop-v1")),
-    ).counts,
-    [0, 0, 0, 0],
+  await page.locator("#hold").click();
+  await page.locator("#view-side").click();
+  // Cancellation restores the pre-drag arrangement.
+  const original = await state();
+  a = await tagCenter("a");
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 90, a.y, { steps: 8 });
+  await page.evaluate(() =>
+    window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 1 })),
   );
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.clock.runFor(100);
-  await page.screenshot({
-    path: "artifacts/workshop-mobile.png",
-    fullPage: true,
-  });
+  await page.mouse.up();
+  assert.deepEqual(await state(), original);
+  a = await tagCenter("a");
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 90, a.y, { steps: 8 });
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  assert.deepEqual(
+    await state(),
+    original,
+    "Escape cancels a captured label drag",
+  );
+  // The unobstructed background controls orbit without changing the parts.
+  a = await tagCenter("a");
+  await page.mouse.move(850, 110);
+  await page.mouse.down();
+  await page.mouse.move(1100, 160, { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const afterOrbit = await tagCenter("a");
+  assert.ok(Math.abs(a.x - afterOrbit.x) > 30, "background drag orbits");
+  assert.deepEqual(await state(), original);
+  await page.locator("#view-reset").click();
+  await range("#load-b", 1);
+  await page.locator("#hold").click();
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator("#beam-status").innerText(), "Load A dips");
+  await page.screenshot({ path: "artifacts/lever-tilt.png" });
+  // Settings reject invalid component masses and permit real measurements.
+  await page.locator("#settings").click();
+  await page.locator("summary").click();
+  await page.locator("#mass-pin").fill("4");
+  await page.locator("#calibration-form button[type=submit]").click();
+  assert.match(
+    await page.locator("#calibration-error").innerText(),
+    /more than/,
+  );
+  await page.locator("#defaults").click();
+  await page.locator("#mass-beam").fill("20");
+  await page.locator("#calibration-form button[type=submit]").click();
   assert.equal(
     await page.evaluate(
-      () => document.documentElement.scrollWidth > innerWidth,
+      () =>
+        JSON.parse(localStorage.getItem("lever-workshop-v2")).calibration.beam,
     ),
-    false,
-    "no horizontal overflow on small screens",
+    20,
   );
+  await page.locator("#reduced-motion").check();
+  await page.locator("#settings-dialog .dialog-close").first().click();
+  await page.locator("#reset").click();
+  await page.locator("#view-reset").click();
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await page.waitForTimeout(200);
+  await fits();
+  await page.screenshot({ path: "artifacts/workshop-small-laptop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(200);
+  await fits();
+  for (const part of ["a", "pivot", "b"]) {
+    const tag = await page.locator(`[data-part="${part}"]`).boundingBox();
+    assert.ok(
+      tag.x >= 0 && tag.x + tag.width <= 390,
+      `${part} stays in the portrait view`,
+    );
+  }
+  await page.screenshot({ path: "artifacts/workshop-mobile.png" });
+  await page.locator("#help").click();
+  assert.ok(await page.locator("#help-dialog").isVisible());
+  await page.keyboard.press("Escape");
+  assert.equal(await page.locator("#help-dialog").isVisible(), false);
+  // Touch uses the same snapping and constraints on a small laptop.
+  const touch = await browser.newPage({
+    viewport: { width: 1024, height: 768 },
+    hasTouch: true,
+  });
+  touch.on("pageerror", (e) => errors.push(e.message));
+  await touch.goto(url);
+  await touch.waitForFunction(
+    () => document.querySelector("#app").dataset.ready === "true",
+  );
+  await touch.locator("#hold").click();
+  await touch.locator("#view-side").click();
+  const box = await touch.locator('[data-part="a"]').boundingBox(),
+    tx = box.x + box.width / 2,
+    ty = box.y + box.height / 2;
+  const cdp = await touch.context().newCDPSession(touch);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: tx, y: ty }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ x: tx + 100, y: ty }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  assert.ok(
+    await touch.evaluate(
+      () => JSON.parse(localStorage.getItem("lever-workshop-v2")).state.a > 1,
+    ),
+  );
+  await touch.close();
+  // Devices without WebGL or storage retain the same controls and mechanics.
   const fallback = await browser.newPage({
     viewport: { width: 1024, height: 768 },
   });
@@ -256,19 +327,32 @@ try {
   });
   await fallback.goto(url);
   await fallback.locator("#fallback").waitFor({ state: "visible" });
-  await fallback.locator('[data-prediction="left"]').click();
-  await fallback.locator("#predict-test").click();
+  await fallback.locator('[data-select="a"]').click();
+  await fallback.locator("#position").focus();
+  await fallback.keyboard.press("ArrowRight");
+  assert.equal(await fallback.locator("#position-value").innerText(), "Hole 2");
   assert.equal(
-    await fallback.locator("#test-change").count(),
-    1,
-    "diagram mode supports the same interaction without storage",
+    await fallback.locator("#beam-status").innerText(),
+    "Load B dips",
   );
+  await fallback.screenshot({ path: "artifacts/diagram-fallback.png" });
   await fallback.close();
   assert.deepEqual(errors, [], "no unhandled browser errors");
-  assert.deepEqual(external, [], "no external runtime requests");
+  assert.deepEqual(external, [], "all runtime resources are local");
   console.log(
-    "PASS: 3D; prediction gate; assisted practice; 12 independent rounds; unlock; persistence; six trials; timer pause/expiry/untimed; physical observations and controls; export/reset; mobile layout; WebGL/storage fallback; local-only assets.",
+    "PASS: real-mesh and tag dragging; all crossing limits; reverse-view drag; 360° orbit; load sliders; keyboard controls; persistence; cancellation; model settings; small screens; touch; WebGL/storage fallback; local-only assets.",
   );
+} catch (error) {
+  await page.screenshot({ path: "artifacts/browser-failure.png" });
+  console.error(
+    "Failure state:",
+    await state(),
+    "A:",
+    await tagCenter("a"),
+    "B:",
+    await tagCenter("b"),
+  );
+  throw error;
 } finally {
   await browser.close();
   server?.kill();
