@@ -95,6 +95,31 @@ try {
     0,
   );
   assert.equal(await page.locator("#lesson").count(), 0);
+  // Repeated clicks on the workbench must not select the surrounding UI text.
+  const brand = await page.locator(".brand").boundingBox();
+  await page.mouse.click(brand.x + brand.width / 2, brand.y + 16, {
+    clickCount: 3,
+  });
+  assert.equal(
+    await page.evaluate(() => window.getSelection().toString()),
+    "",
+    "workbench labels cannot be selected accidentally",
+  );
+  await page.mouse.click(900, 400, { clickCount: 3 });
+  assert.equal(
+    await page.evaluate(() => window.getSelection().toString()),
+    "",
+    "repeated canvas clicks do not select page text",
+  );
+  // The selection rule does not prevent copying the help text.
+  await page.locator("#help").click();
+  await page.locator("#help-dialog h1").click({ clickCount: 3 });
+  assert.ok(
+    await page.evaluate(() => window.getSelection().toString().length > 0),
+    "dialog instructions remain selectable",
+  );
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => window.getSelection().removeAllRanges());
   await page.screenshot({ path: "artifacts/workshop.png" });
   // Zooming can project a floating label beyond the viewport; it must stay clipped.
   await page.mouse.move(900, 400);
@@ -116,6 +141,11 @@ try {
   assert.ok(
     s.a > 1 && s.a < s.pivot,
     `mesh drag moved load A: ${JSON.stringify(s)}`,
+  );
+  assert.equal(
+    await page.evaluate(() => window.getSelection().toString()),
+    "",
+    "dragging a CAD part does not select page text",
   );
   // Dragging tags provides larger touch targets for the same parts.
   await dragTag("b", -110);

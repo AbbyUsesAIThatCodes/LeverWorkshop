@@ -90,6 +90,9 @@ input {
   inset: 0;
 }
 #app {
+  /* Dragging and repeated clicks are game actions, not text selection. */
+  -webkit-user-select: none;
+  user-select: none;
   height: 100dvh;
   isolation: isolate;
   /* Projected labels may leave the camera view while orbiting or resizing. */

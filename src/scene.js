@@ -224,35 +224,77 @@ export class WorkshopScene {
     this.scene.add(grid);
     this.box(4, 0.13, 4.9, 0xece8d6, -18, 0.02, -3);
     this.box(3.8, 0.06, 4.7, 0xfffae9, -18, 0.13, -3);
-    const pencil = this.box(0.17, 0.17, 4, 0xd4aa56, -16, 0.28, -2);
+    // Paper top is y = 0.16; the pencil rests on it and stays inside its edges.
+    const pencil = this.box(0.17, 0.17, 4, 0xd4aa56, -18, 0.245, -3);
     pencil.rotation.y = 0.4;
-    this.box(4.7, 0.7, 3, 0x829891, 17, 0.04, -5);
-    this.box(4.4, 0.1, 2.7, 0x526e69, 17, 0.45, -5);
-    // A few calm workshop props at the back of the table.
-    const pot = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.1, 0.8, 1.6, 20),
-      new THREE.MeshStandardMaterial({ color: 0xc79069, roughness: 1 }),
+    // A simple saguaro silhouette: a rounded stem and two upward arms.
+    const cactus = new THREE.Group();
+    cactus.position.set(-18, 0, -10);
+    const terracotta = new THREE.MeshStandardMaterial({
+      color: 0xc79069,
+      roughness: 1,
+    });
+    const green = new THREE.MeshStandardMaterial({
+      color: 0x527e58,
+      roughness: 0.85,
+    });
+    const addProp = (geometry, material, x, y, z) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      cactus.add(mesh);
+      return mesh;
+    };
+    // The pot bottom meets the tabletop at y = -0.12.
+    addProp(
+      new THREE.CylinderGeometry(1.1, 0.8, 1.6, 20, 1, true),
+      terracotta, 0, 0.68, 0,
     );
-    pot.position.set(-18, 0.5, -10);
-    pot.castShadow = true;
-    this.scene.add(pot);
-    for (let i = 0; i < 6; i++) {
-      const leaf = new THREE.Mesh(
-        new THREE.SphereGeometry(0.75, 10, 8),
-        new THREE.MeshStandardMaterial({
-          color: i % 2 ? 0x5f8668 : 0x789474,
-          roughness: 1,
-        }),
+    const rim = addProp(
+      new THREE.TorusGeometry(1.04, 0.1, 8, 24),
+      terracotta, 0, 1.45, 0,
+    );
+    rim.rotation.x = Math.PI / 2;
+    addProp(
+      new THREE.CylinderGeometry(0.98, 0.98, 0.08, 20),
+      new THREE.MeshStandardMaterial({ color: 0x554a37, roughness: 1 }),
+      0, 1.425, 0,
+    );
+    addProp(new THREE.CapsuleGeometry(0.34, 1.65, 6, 12), green, 0, 2.5, 0);
+    for (const [x, y, length, tipY, tipLength] of [
+      [-0.77, 2.26, 0.58, 2.56, 0.63],
+      [0.72, 2.6, 0.5, 2.97, 0.61],
+    ]) {
+      const elbow = addProp(
+        new THREE.CapsuleGeometry(0.17, length, 5, 12),
+        green, x / 2, y, 0,
       );
-      leaf.scale.set(0.4, 1.8, 0.6);
-      leaf.position.set(
-        -18 + Math.cos(i) * 0.7,
-        2 + Math.sin(i) * 0.4,
-        -10 + Math.sin(i) * 0.5,
+      elbow.rotation.z = Math.PI / 2;
+      addProp(
+        new THREE.CapsuleGeometry(0.18, tipLength, 5, 12),
+        green, x, tipY, 0,
       );
-      leaf.rotation.z = Math.cos(i) * 0.6;
-      this.scene.add(leaf);
     }
+    const spines = [];
+    for (let rib = 0; rib < 6; rib++) {
+      const angle = (rib + 0.5) * Math.PI / 3;
+      const nx = Math.cos(angle), nz = Math.sin(angle);
+      for (const y of [1.85, 2.2, 2.55, 2.9, 3.2]) {
+        const x = nx * 0.344, z = nz * 0.344;
+        spines.push(
+          x, y, z, x + nx * 0.12, y + 0.06, z + nz * 0.12,
+          x, y, z, x + nx * 0.1, y - 0.05, z + nz * 0.1,
+        );
+      }
+    }
+    cactus.add(new THREE.LineSegments(
+      new THREE.BufferGeometry().setAttribute(
+        "position", new THREE.Float32BufferAttribute(spines, 3),
+      ),
+      new THREE.LineBasicMaterial({ color: 0xd6e0a6 }),
+    ));
+    this.scene.add(cactus);
   }
   setState(state, calibration) {
     this.state = { ...state };
