@@ -73,6 +73,16 @@ function onFrame({positions,direction,held:isHeld}) {
   const foot=positions[p+'foot'],pivot=positions.pivot;const y1=foot.y-13,y2=pivot.y-13,mx=(foot.x+pivot.x)/2,my=(y1+y2)/2;
   $(`#measure-${p}`).innerHTML=`<path d="M${foot.x} ${y1+7}v-14m0 7L${pivot.x} ${y2}m0-7v14" stroke="${p==='a'?'#286052':'#865512'}" stroke-width="2" fill="none"/><rect x="${mx-39}" y="${my-12}" width="78" height="24" rx="6" fill="#fffbed"/><text x="${mx}" y="${my+5}" text-anchor="middle" fill="#193f35" font-size="16" font-family="Comic Sans MS,Comic Neue,sans-serif" font-weight="bold">${state[p]} mm</text>`;
  }
+ // Keep labels readable when short arms project close together (especially phones).
+ const labels=['a','b'].map(p=>$(`[data-part="${p}"]`)).sort((a,b)=>parseFloat(a.style.left)-parseFloat(b.style.left));
+ const [left,right]=labels, gap=(left.offsetWidth+right.offsetWidth)/2+10;
+ const lx=parseFloat(left.style.left),rx=parseFloat(right.style.left),w=$('#stage').clientWidth;
+ if(rx-lx<gap && Math.abs(parseFloat(left.style.top)-parseFloat(right.style.top))<65){
+   if(w>=left.offsetWidth+right.offsetWidth+20){
+     const center=Math.max(left.offsetWidth/2+10,Math.min(w-right.offsetWidth/2-gap-10,(lx+rx-gap)/2));
+     left.style.left=`${center}px`;right.style.left=`${center+gap}px`;
+   }else right.style.top=`${parseFloat(left.style.top)+65}px`;
+ }
 }
 function drawFallback(){const m=measures(state),cx=400,scale=.94,angle=held||m.direction==='balance'?0:m.direction==='a'?-12:12;$('#fallback-svg').innerHTML=`<path d="M400 140l-24 145h48z" fill="#627f75"/><g transform="rotate(${angle} 400 140)"><rect x="105" y="135" width="590" height="12" rx="4" fill="#839a94"/>${['a','b'].map(p=>{const x=cx+(p==='a'?-1:1)*state[p]*scale;return `<path d="M${x} 145v45" stroke="#8e7044" stroke-width="4"/><rect x="${x-24}" y="190" width="48" height="${25+Math.cbrt(state[massKey(p)])*3}" rx="5" fill="${p==='a'?'#38786c':'#b5893d'}"/><text x="${x}" y="105" text-anchor="middle" font-size="20" fill="#193f35">${p.toUpperCase()}: ${state[massKey(p)]} g</text><text x="${(x+cx)/2}" y="126" text-anchor="middle" font-size="17" fill="#193f35">${state[p]} mm</text>`;}).join('')}</g>`;updateStatus(m.direction,held);}
 function holdScene(){scene?.setHeld(held||!!$('dialog[open]'));if(fallback)drawFallback();}

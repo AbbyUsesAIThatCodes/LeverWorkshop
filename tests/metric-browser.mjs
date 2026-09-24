@@ -12,6 +12,8 @@ export async function verifyMetric(page, root) {
   await page.getByRole('combobox',{name:'Try',exact:true}).selectOption('double');
   assert.equal(await page.locator('#mass-a').inputValue(),'100');
   assert.equal(await page.locator('#mass-b').inputValue(),'200');
+  await page.mouse.move(1020,65);await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.querySelector('#toast').classList.contains('show'));
   await page.screenshot({path:'artifacts/metric-workshop.png'});
   const tag=page.locator('[data-select="a"]');
   await tag.click();
@@ -35,6 +37,8 @@ export async function verifyMetric(page, root) {
   await page.getByRole('combobox',{name:'Try',exact:true}).selectOption('triple');
   await page.getByRole('tab',{name:'Grams → newtons'}).click();
   assert.match(await page.locator('#force-math').innerText(),/2\.943 N/);
+  await page.mouse.move(1020,65);await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.querySelector('#toast').classList.contains('show'));
   await page.screenshot({path:'artifacts/metric-newtons.png'});
   await page.getByRole('tab',{name:'Balance & advantage'}).click();
   await page.getByRole('button',{name:'Orbit ↻'}).click();await page.getByRole('button',{name:'Orbit ↻'}).click();
@@ -43,6 +47,8 @@ export async function verifyMetric(page, root) {
   assert.equal(await page.locator('#distance-a').inputValue(),'175','screen-right reverses after half orbit');
   await page.getByRole('button',{name:'Fit view'}).click();
   await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.documentElement.scrollHeight>1000);
+  await page.waitForFunction(()=>!document.querySelector('#toast').classList.contains('show'));
   await page.screenshot({path:'artifacts/metric-mobile.png',fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no mobile horizontal overflow');
   await page.setViewportSize({width:1366,height:768});

@@ -28,7 +28,7 @@ Saved state has its own browser-storage key. All runtime assets are local; no st
 - Geometry checks: axle ray passes through the beam's real bore; hangers stay vertical; minimum/maximum masses and positions clear the center support and desk at either travel stop.
 - `npm run build`: passed; existing workshop and companion both built.
 - Interactive cloud browser: fallback UI verified at 1366×768 and 390×844; checked 2:1 balancing, 3:1 conversions, role changes, held/released status, math hide/show, input limits and responsive layout.
-- This browser disables WebGL. Consequently 3D visual quality, object dragging and orbit interactions have not been observed here. The repository browser CI now includes these checks and captures `metric-workshop.png`, `metric-newtons.png`, and `metric-mobile.png` when run in its software-WebGL environment. CI results must be checked separately.
+- The interactive cloud browser disables WebGL. GitHub Actions run 35944628135 passed the original workshop regression suite and the new software-WebGL 3D checks: startup, object-label dragging, vertical mass resizing, keyboard, reverse-camera movement, math toggle, newton conversions and mobile width. Its captured 3D screenshots were downloaded and visually reviewed. That review prompted a phone document-scroll fix and separation for nearby floating labels; subsequent CI results belong to the PR checks.
 - No physical classroom validation or student trial has been performed.
 
 Per the repository working agreement, this is a review PR. It has not been merged or deployed.
