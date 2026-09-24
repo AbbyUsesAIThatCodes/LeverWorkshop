@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { verifyMetric } from "./metric-browser.mjs";
 import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
@@ -381,6 +382,7 @@ try {
   );
   await fallback.screenshot({ path: "artifacts/diagram-fallback.png" });
   await fallback.close();
+  await verifyMetric(page, url);
   assert.deepEqual(errors, [], "no unhandled browser errors");
   assert.deepEqual(external, [], "all runtime resources are local");
   console.log(

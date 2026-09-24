@@ -12,12 +12,15 @@ await copyFile(
   "dist/assets/comic-neue-bold.woff2",
 );
 await build({
-  entryPoints: ["src/app.js"],
+  entryPoints: {app: "src/app.js", metric: "src/metric/app.js"},
   bundle: true,
   format: "esm",
   target: ["chrome100", "firefox100", "safari16"],
-  outfile: "dist/assets/app.js",
+  outdir: "dist/assets",
   minify: true,
   legalComments: "eof",
 });
+await mkdir("dist/metric/assets", { recursive: true });
+await copyFile("public/assets/parts.json", "dist/metric/assets/parts.json");
+await copyFile("public/assets/parts.bin.gz", "dist/metric/assets/parts.bin.gz");
 console.log("Built self-contained static site in dist/");

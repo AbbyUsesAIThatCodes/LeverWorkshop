@@ -4,6 +4,10 @@ A full-window 3D workbench for Engineering Essentials. Drag the two VEX IQ loads
 
 ![Lever Workshop exploration interface](docs/screenshots/workshop.png)
 
+## Millimeter Lab companion
+
+A separate millimeter-and-gram lab is available at `metric/` after building. It preserves the desk and camera, adds sliding masses and a hideable mechanical-advantage panel, and uses an explicitly ideal lever for exact 2:1 and 3:1 reasoning. See the [companion guide and verification](docs/MILLIMETER-LAB.md). Locally open <http://localhost:4173/LeverWorkshop/metric/>.
+
 ## Explore
 
 - Drag a load or the pivot itself, or use its larger floating label. Parts snap to actual mounting columns and cannot cross one another.
