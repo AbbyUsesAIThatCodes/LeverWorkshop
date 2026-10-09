@@ -1,5 +1,7 @@
 # Lever Workshop
 
+**[Play LeverWorkshop Online](https://abbyusesaithatcodes.github.io/LeverWorkshop/)**
+
 A full-window 3D workbench for Engineering Essentials. Drag the two VEX IQ loads and their pivot, add gears, and explore what makes a lever balance.
 
 ![Lever Workshop exploration interface](docs/screenshots/workshop.png)
